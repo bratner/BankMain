@@ -43,6 +43,7 @@ public class MSReceiver extends BroadcastReceiver {
 	                	detfaceIntent.setClassName("com.bratner.bankproto", "com.bratner.bankproto.DetectFace");
 	                	detfaceIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 	                	context.startActivity(detfaceIntent);
+	                	abortBroadcast();
 	                	/* int duration = Toast.LENGTH_SHORT;     	
 	                	Toast toast = Toast.makeText(getApplicationContext(), "Run detect face activity!", duration);
 	                	toast.show(); 

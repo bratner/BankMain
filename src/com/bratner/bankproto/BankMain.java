@@ -55,12 +55,12 @@ public class BankMain extends Activity {
 	}
 
 
-	@Override
+	/* @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.bank_main, menu);
         return true;
-    }
+    } */
     public void startDetectFace(View v){
     	Intent intent = new Intent(this, DetectFace.class);
     	/* int duration = Toast.LENGTH_SHORT;     	

@@ -1,5 +1,8 @@
 package com.bratner.bankproto;
 
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Parameters;
@@ -11,21 +14,46 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 import android.widget.RelativeLayout.LayoutParams;
 import android.widget.Toast;
 import android.support.v4.app.NavUtils;
 
-public class DetectFace extends Activity{
+public class DetectFace extends Activity implements OnClickListener{
     private int cameraId = -1;    
     private CameraPreview cp;
+    private SurfaceView sv;
+    private Button bCancel;
+    private Button bApprove;
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_detect_face);
 		// Show the Up button in the action bar.
-		setupActionBar();
+		//setupActionBar();
+		bCancel = (Button) findViewById(R.id.bCancel);
+		bApprove = (Button) findViewById(R.id.bApprove);
+		bCancel.setOnClickListener(this);
+		bApprove.setOnClickListener(this);
+		//prevent from sleeping
+		
+		getWindow().setFlags(
+				WindowManager.LayoutParams.FLAG_FULLSCREEN |
+				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+	            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | 
+	            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON ,
+	            
+	             
+	            WindowManager.LayoutParams.FLAG_FULLSCREEN |
+	            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | 	            
+	            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | 
+	            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+		
 		//Find the camera id for the first front facing camera
 		Log.d("Brat", Build.HARDWARE);
 		int totalCams = Camera.getNumberOfCameras();		 
@@ -46,6 +74,10 @@ public class DetectFace extends Activity{
 		FrameLayout fl = (FrameLayout) findViewById(R.id.flay);
 		cp = new CameraPreview(this, cameraId);
 		fl.addView(cp);
+		sv = new SurfaceView(this);
+		sv.setClickable(true);
+		//sv.setOnClickListener(this);
+		fl.addView(sv);
 		
 	}
 
@@ -109,6 +141,16 @@ public class DetectFace extends Activity{
 		// TODO Auto-generated method stub
 		super.onStop();
 
+	}
+
+	@Override
+	public void onClick(View v) {
+		
+		if( bCancel == (Button)v ){
+			cp.stop();
+			this.finish();
+		}
+		
 	}
 	
 	

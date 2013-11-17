@@ -21,13 +21,14 @@ import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+import android.view.WindowManager;
 import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-public class CameraPreview extends SurfaceView implements Callback, FaceDetectionListener {
+public class CameraPreview extends SurfaceView implements Callback, FaceDetectionListener,PreviewCallback {
   
 	  private static boolean DEBUGGING = true;
 	    private static final String LOG_TAG = "CameraPreviewSample";
@@ -51,7 +52,8 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	    PreviewReadyCallback mPreviewReadyCallback = null;
 	    private Rect lastFace;
 	    private int lastAngle = 90;
-	    
+	    private RectF rectf = null;
+	    private boolean stopping = false;
 	    public static enum LayoutMode {
 	        FitToParent, // Scale to the size that no side is larger than the parent
 	        NoBlank // Scale to the size that no side is smaller than the parent
@@ -93,14 +95,19 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	        Camera.Parameters cameraParams = mCamera.getParameters();
 	        mPreviewSizeList = cameraParams.getSupportedPreviewSizes();
 	        mPictureSizeList = cameraParams.getSupportedPictureSizes();
-	        maxFaces = cameraParams.getMaxNumDetectedFaces();
-	        mCamera.setFaceDetectionListener(this);
-	        if(maxFaces > 0)
-	        	faceDetect = true;
+	        //maxFaces = cameraParams.getMaxNumDetectedFaces();
+	        //mCamera.setFaceDetectionListener(this);
+	        //mCamera.setPreviewCallback(this);
+	        rectf = new RectF(10, 10, 100, 100);
+	        //if(maxFaces > 0)
+	        //	faceDetect = true;
 	    }
 
 	    @Override
 	    public void surfaceCreated(SurfaceHolder holder) {
+	    	Log.d(LOG_TAG,"Surface created");
+	    	if(stopping)
+	    		return;
 	        try {
 	            mCamera.setPreviewDisplay(mHolder);
 	        } catch (IOException e) {
@@ -111,14 +118,20 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	    
 	    @Override
 	    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+	    	Log.d(LOG_TAG,"Surface changed");
+	    	if(stopping)
+	    		return;
 	        mSurfaceChangedCallDepth++;
 	        doSurfaceChanged(width, height);
 	        mSurfaceChangedCallDepth--;
 	    }
 
 	    private void doSurfaceChanged(int width, int height) {
+	    	if(stopping)
+	    		return;
 	    	if(faceDetect){
-	    		mCamera.stopFaceDetection();
+	    		if(mCamera != null)
+	    		   mCamera.stopFaceDetection();
 	    	}
 	        mCamera.stopPreview();
 	        
@@ -165,7 +178,7 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	                Log.w(LOG_TAG, "Gave up starting preview");
 	            }
 	        }
-	       
+	        //mCamera.setPreviewCallback(this);
 	        if(faceDetect)
 	        	mCamera.startFaceDetection();
 	        if (null != mPreviewReadyCallback) {
@@ -356,16 +369,26 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 
 	    @Override
 	    public void surfaceDestroyed(SurfaceHolder holder) {
+	    	Log.d(LOG_TAG,"surfaceDestroyed");
 	        stop();
 	    }
 	    
 	    public void stop() {
+	    	Log.d(LOG_TAG,"Stop");
+	    	if(stopping)
+	    		return;
+	    	stopping = true;
 	        if (null == mCamera) {
 	            return;
 	        }
-	        mCamera.stopPreview();
-	        mCamera.release();
-	        mCamera = null;
+	        try{	        
+	         mCamera.stopPreview();
+	         
+	         mCamera.release();
+	         mCamera = null;
+	        } catch (Exception e){
+	           Log.d(LOG_TAG,"cp.stop "+e);	
+	        }
 	    }
 
 	    public boolean isPortrait() {
@@ -424,13 +447,34 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
             rectf.roundOut(ret);
 	    	return ret;
 	    }
-	 /*   @Override
-	    public void draw(Canvas canvas) {
-	     super.draw(canvas);
-	     // nothing gets drawn :(
-	     Paint p = new Paint(Color.RED);
-	     canvas.drawText("PREVIEW", canvas.getWidth() / 2,
-	       canvas.getHeight() / 2, p);
-	    } */
+
+	    
+	    @Override
+		public void onAttachedToWindow() {			
+			super.onAttachedToWindow();
+			Log.d(LOG_TAG,"onAttachedToWindow");
+		/*	   mActivity.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN | 
+			           
+			            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | 
+			            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
+			            WindowManager.LayoutParams.FLAG_FULLSCREEN | 
+			            WindowManager.LayoutParams.FLAG_FULLSCREEN |
+			            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | 
+			            
+			            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | 
+			            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+			            */
+		}
+
+	@Override
+	public void onPreviewFrame(byte[] data, Camera camera) {
+		Log.d(LOG_TAG,"onPreviewFrame");
+	//	Canvas c = mHolder.lockCanvas();
+	//	Paint p = new Paint();
+	//	p.setColor(Color.RED);
+	//	c.drawRect(rectf, p);
+	//	Log.d(LOG_TAG,"onPreviewFrame Got "+data.length+" bytes of data.");		
+	//	mHolder.unlockCanvasAndPost(c);
+	}
 
 }
