@@ -4,31 +4,23 @@ import java.io.IOException;
 import java.util.List;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.res.Configuration;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.RectF;
 import android.hardware.Camera;
-import android.hardware.Camera.Face;
-import android.hardware.Camera.FaceDetectionListener;
+import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.PreviewCallback;
+import android.hardware.Camera.ShutterCallback;
 import android.os.Build;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
 import android.view.SurfaceHolder;
-import android.view.WindowManager;
-import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-public class CameraPreview extends SurfaceView implements Callback, FaceDetectionListener,PreviewCallback {
+public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
   
 	  private static boolean DEBUGGING = true;
 	    private static final String LOG_TAG = "CameraPreviewSample";
@@ -46,13 +38,9 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	    private int mCameraId;
 	    private LayoutMode mLayoutMode;
 	    private int mCenterPosX = -1;
-	    private int mCenterPosY;
-	    private int maxFaces;
+	    private int mCenterPosY;	    
 	    private boolean faceDetect = false;
 	    PreviewReadyCallback mPreviewReadyCallback = null;
-	    private Rect lastFace;
-	    private int lastAngle = 90;
-	    private RectF rectf = null;
 	    private boolean stopping = false;
 	    public static enum LayoutMode {
 	        FitToParent, // Scale to the size that no side is larger than the parent
@@ -94,13 +82,7 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	        }
 	        Camera.Parameters cameraParams = mCamera.getParameters();
 	        mPreviewSizeList = cameraParams.getSupportedPreviewSizes();
-	        mPictureSizeList = cameraParams.getSupportedPictureSizes();
-	        //maxFaces = cameraParams.getMaxNumDetectedFaces();
-	        //mCamera.setFaceDetectionListener(this);
-	        //mCamera.setPreviewCallback(this);
-	        rectf = new RectF(10, 10, 100, 100);
-	        //if(maxFaces > 0)
-	        //	faceDetect = true;
+	        mPictureSizeList = cameraParams.getSupportedPictureSizes();	        
 	    }
 
 	    @Override
@@ -351,9 +333,7 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	                default:
 	                    angle = 90;
 	                    break;
-	            }
-	            Log.v(LOG_TAG, "angle: " + angle);
-	            lastAngle = angle;
+	            }	            
 	            mCamera.setDisplayOrientation(angle);
 	        }
 
@@ -385,13 +365,30 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	         mCamera.stopPreview();
 	         
 	         mCamera.release();
-	         mCamera = null;
+	         mCamera = null;	         
 	        } catch (Exception e){
 	           Log.d(LOG_TAG,"cp.stop "+e);	
 	        }
 	    }
 
-	    public boolean isPortrait() {
+	    @Override
+		protected void onAttachedToWindow() {
+			// TODO Auto-generated method stub
+			super.onAttachedToWindow();
+			   
+
+			    /*window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+			    window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+			    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+			    window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD); */
+
+			 /*   window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+			            + WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+			            + WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+			            + WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD); */
+		}
+
+		public boolean isPortrait() {
 	        return (mActivity.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
 	    }
 	    
@@ -417,64 +414,11 @@ public class CameraPreview extends SurfaceView implements Callback, FaceDetectio
 	        mPreviewReadyCallback = cb;
 	    }
 
-		@Override
-		public void onFaceDetection(Face[] faces, Camera camera) {
-			    Face f = faces[0];		
-			    Rect r = translateFaceCoordinates(f);
-				Log.d(LOG_TAG, "Detected a face: "+f.rect);
-				Log.d(LOG_TAG, "Translated to: "+r);
+		public void takePhoto(ShutterCallback shutter, PictureCallback raw) {
+			if( stopping || mCamera == null)
+				return;
+			mCamera.takePicture(shutter,raw,raw);
+			
 		}
-	    private Rect translateFaceCoordinates(Face f){
-	    	
-	    	Rect frame = mHolder.getSurfaceFrame();	    
-	    	RectF rectf = new RectF(frame);
-	    	Rect ret = new Rect(frame);
-	    	Matrix matrix = new Matrix();	    	 
-	    	 // Need mirror for front camera.
-	    	boolean mirror = true;
-	    	matrix.setScale(mirror ? -1 : 1, 1);
-	    	 // This is the value for android.hardware.Camera.setDisplayOrientation.	    	
-	    	matrix.postRotate(lastAngle);
-	    	 // Camera driver coordinates range from (-1000, -1000) to (1000, 1000).
-	    	 // UI coordinates range from (0, 0) to (width, height).
-	    	
-	    	matrix.postScale(frame.right / 2000f, frame.bottom / 2000f);
-	    	matrix.postTranslate(frame.right / 2f, frame.bottom / 2f);
-	    	Log.d(LOG_TAG, "Took a rectf "+rectf);
-	    	
-            matrix.mapRect(rectf);
-            Log.d(LOG_TAG, "Mapped it to "+rectf+"by matrix"+matrix);
-            rectf.roundOut(ret);
-	    	return ret;
-	    }
-
-	    
-	    @Override
-		public void onAttachedToWindow() {			
-			super.onAttachedToWindow();
-			Log.d(LOG_TAG,"onAttachedToWindow");
-		/*	   mActivity.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN | 
-			           
-			            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | 
-			            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
-			            WindowManager.LayoutParams.FLAG_FULLSCREEN | 
-			            WindowManager.LayoutParams.FLAG_FULLSCREEN |
-			            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | 
-			            
-			            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | 
-			            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-			            */
-		}
-
-	@Override
-	public void onPreviewFrame(byte[] data, Camera camera) {
-		Log.d(LOG_TAG,"onPreviewFrame");
-	//	Canvas c = mHolder.lockCanvas();
-	//	Paint p = new Paint();
-	//	p.setColor(Color.RED);
-	//	c.drawRect(rectf, p);
-	//	Log.d(LOG_TAG,"onPreviewFrame Got "+data.length+" bytes of data.");		
-	//	mHolder.unlockCanvasAndPost(c);
-	}
-
+			    
 }

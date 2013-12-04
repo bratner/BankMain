@@ -4,12 +4,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.sax.StartElementListener;
 import android.telephony.SmsMessage;
-import android.widget.Toast;
+import android.util.Log;
+
 
 public class MSReceiver extends BroadcastReceiver {
 	public MSReceiver() {
+		Log.d("BRAT","Starting BankProto SMS receiver");
 	}
 
 	@Override
@@ -33,25 +34,19 @@ public class MSReceiver extends BroadcastReceiver {
 //	                            Log.d("Exception caught",e.getMessage());
 	                }
 	                
-	                if(msgBody.matches("^bank:\\d+$")){
-	                	String howmuch = msgBody.split(":")[1];
-	                	
-	                	int duration = Toast.LENGTH_LONG;
-	                	Toast toast = Toast.makeText(context, "Снимают "+howmuch+" рублей!", duration);
-	                	toast.show();
+	                if(msgBody.matches("^bank:\\d+:\\w+$")){
+	                	String parts[] = msgBody.split(":");
+	                	String howmuch = parts[1];
+	                	String req_id = parts[2];
+	                	/* Toast toast = Toast.makeText(context, "Снимают "+howmuch+" рублей!", duration);
+	                	toast.show(); */
 	                	Intent detfaceIntent = new Intent();
 	                	detfaceIntent.setClassName("com.bratner.bankproto", "com.bratner.bankproto.DetectFace");
 	                	detfaceIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+	                	detfaceIntent.putExtra("ammount", howmuch);
+	                	detfaceIntent.putExtra("req_id", req_id);
 	                	context.startActivity(detfaceIntent);
-	                	abortBroadcast();
-	                	/* int duration = Toast.LENGTH_SHORT;     	
-	                	Toast toast = Toast.makeText(getApplicationContext(), "Run detect face activity!", duration);
-	                	toast.show(); 
-	                	*/
-	                	//startActivity(intent);
-	                	//Intent i = new Intent(context, BankMain.class);
-	                	//i.putExtra("ammount",howmuch);
-	                	//context.startActivity(i);	                	
+	                	abortBroadcast();	                		                
 	                }
 	            }
 	        }
