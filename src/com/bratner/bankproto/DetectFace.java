@@ -1,10 +1,15 @@
 package com.bratner.bankproto;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.Arrays;
 
 import org.apache.http.HttpResponse;
@@ -51,10 +56,12 @@ public class DetectFace extends Activity implements OnClickListener, ShutterCall
     private Button bApprove;
     private String reqId;
     private String ammount;
+    public byte[] image_data = null;
     
-    private class DoPostRequestAsync extends AsyncTask<URI, Void, String> {
+    private class DoPostRequestAsync extends AsyncTask<URL, Void, String> {
+        private String boundary;
+        private static final String LINE_FEED = "\r\n";
         
-
         protected void onPostExecute(String result) {
             //This gets called on the interface (main) thread!
         	Log.d("Brat", "Executed the post request with result "+result);
@@ -62,25 +69,47 @@ public class DetectFace extends Activity implements OnClickListener, ShutterCall
         }
 
 		@Override
-		protected String doInBackground(URI... params) {
+		protected String doInBackground(URL... params) {
+			
+			boundary = "==="+System.currentTimeMillis()+"===";
 			Log.d("Brat", "Request for URL "+params[0]);
-			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost(params[0]);
-			HttpResponse response;
+			//HttpURLConnection urlcon = params[0]
 			try {
-				response = client.execute(post);
-			} catch (ClientProtocolException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				return "Error";
+				HttpURLConnection urlcon = (HttpURLConnection) params[0].openConnection();
+				urlcon.setDoOutput(true);
+				urlcon.setDoInput(true);
+				urlcon.setUseCaches(false);
+				urlcon.setRequestMethod("POST");
+				urlcon.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+				urlcon.setRequestProperty("User-Agent","Bratners Agent");
+				
+				OutputStream out = urlcon.getOutputStream();
+				PrintWriter writer = new PrintWriter(new OutputStreamWriter(out),true);
+				writer.append("--").append(boundary).append(LINE_FEED);	
+				String fileName = reqId+".jpg";
+				writer.append(
+		                "Content-Disposition: form-data; name=\"selfshot\"; filename=\"" + fileName + "\"")
+		                .append(LINE_FEED);
+		        writer.append(
+		                "Content-Type: "
+		                        + URLConnection.guessContentTypeFromName(fileName))
+		                .append(LINE_FEED);
+		        writer.append("Content-Transfer-Encoding: binary").append(LINE_FEED);
+		        writer.append(LINE_FEED);
+		        writer.flush();
+		        out.write(image_data);
+		        out.flush();
+		        writer.append(LINE_FEED);
+		        writer.flush();     
+		        writer.append(LINE_FEED).flush();
+		        writer.append("--" + boundary + "--").append(LINE_FEED);
+		        writer.close();
+		        int status = urlcon.getResponseCode();
+		 		return Integer.toString(status);			
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				return "Error";
-			}		
-			
-				return response.toString();
-			
+				Log.d("Brat","Error with http request " + e.toString());
+				return "Shit man";
+			}
 		}
     }
     
@@ -219,11 +248,8 @@ public class DetectFace extends Activity implements OnClickListener, ShutterCall
 		
 		if( bCancel == (Button)v ){
 						
-			try{
-				new DoPostRequestAsync().execute(new URI("http://inna.co.il/smsfreqcancel&reqid="+reqId));
-			} catch (URISyntaxException e) {
-				Log.d("Brat", "Caught URISyntaxException "+e.toString());
-			}
+			cp.stop();
+			this.finish();
 					
 		}
 		if (bApprove == (Button) v){
@@ -254,10 +280,15 @@ public class DetectFace extends Activity implements OnClickListener, ShutterCall
 			return;
 		}
 		Size picSize = camParams.getPictureSize();
-		int picFormat = camParams.getPictureFormat();			    		
+		int picFormat = camParams.getPictureFormat();
+		image_data = data;
+		DoPostRequestAsync async = new DoPostRequestAsync();
 		
-		
-		
+		try {
+			async.execute(new URL("http://inna.co.il/smsauthjpeg"));
+		} catch (MalformedURLException e) {
+			Log.d("Brat","Error creating url."+e.toString());
+		}						
 		cp.stop();
 		this.finish();
 		
@@ -272,3 +303,4 @@ public class DetectFace extends Activity implements OnClickListener, ShutterCall
 	
 
 }
+	
